@@ -8,4 +8,12 @@ export default defineConfig({
     react(),
     tailwindcss()
   ],
+  server:{
+    port: 5173,
+    allowedHosts: [
+      'shatteringly-unsurging-evelynn.ngrok-free.dev',
+      '.ngrok-free.app',
+      '.ngrok.io',
+    ],
+  }
 })

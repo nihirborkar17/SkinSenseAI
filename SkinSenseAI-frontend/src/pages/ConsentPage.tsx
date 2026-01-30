@@ -30,10 +30,11 @@ const ConsentPage = () => {
 
     setConsent(consent);
 
-    // Navigate to Assessment Page
-    // For now, go back to landing to test
-    alert('Consent saved! Get ready for the assessment.');
-    navigate('/');
+    // // Navigate to Assessment Page
+    // // For now, go back to landing to test
+    // alert('Consent saved! Get ready for the assessment.');
+    // navigate('/');
+    navigate('/assessment');
   };
 
   const handleBack = () => {
