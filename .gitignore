@@ -58,3 +58,5 @@ coverage/
 uploads/
 temp/
 tmp/
+.env.production
+uploads/
