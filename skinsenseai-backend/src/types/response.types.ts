@@ -32,17 +32,20 @@ export interface AIChatResponse {
 
 // Our Enhanced Response Types
 export interface AnalysisResult {
+  // From AI prediction
   condition: string;
   confidence: number;
-  description: string;
-  recommendations: string[];
-  when_to_see_doctor: string[];
-  urgency_level: "low" | "medium" | "high";
-  educational_resources?: Array<{
-    title: string;
-    url: string;
-  }>;
+  
+  // Metadata (from our service)
+  urgency_level: 'low' | 'medium' | 'high';
+  requires_immediate_attention: boolean;
   chat_available: boolean;
+
+  // Demo content (will be replaced by RAG)
+  description: string;
+
+  // Note for frontend
+  note?: string;
 }
 
 export interface StandardResponse<T = any> {
