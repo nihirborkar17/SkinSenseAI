@@ -1,3 +1,4 @@
+// MAIN SERVER
 import express, {
   type Application,
   type Request,
@@ -7,13 +8,17 @@ import cors from "cors";
 import helmet from "helmet";
 import dotenv from "dotenv";
 import rateLimit from "express-rate-limit";
+// Importing middlewares
 import {
   errorHandler,
   notFoundHandler,
 } from "./middleware/error.middleware.js";
+// importing logger
 import { logger } from "./utils/logger.utils.js";
-import { timeStamp } from "node:console";
-import { on } from "node:process";
+// Importing routes
+import analyzeRoutes from './routes/analyze.routes.js';
+import chatRoutes from './routes/chat.routes.js';
+
 
 // Load environment variables
 dotenv.config();
@@ -58,8 +63,8 @@ app.get("/api/health", (req: Request, res, Response) => {
 });
 
 // Routes will be added here
-// app.use('/api/analyze', analyzeRoutes);
-// app.use('/api/chat', chatRoutes);
+app.use('/api/analyze', analyzeRoutes);
+app.use('/api/chat', chatRoutes);
 
 // 404 Handler
 app.use(notFoundHandler);

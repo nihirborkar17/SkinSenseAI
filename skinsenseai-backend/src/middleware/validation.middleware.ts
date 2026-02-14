@@ -77,7 +77,7 @@ export const validateImageUpload = (
 /*
  * VALIDATE CHAT REQUEST - Used for the RAG chat endpoint
  * */
-export const validateChatResponse = (
+export const validateChatRequest = (
   req: Request,
   res: Response,
   next: NextFunction,
