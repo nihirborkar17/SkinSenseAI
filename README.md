@@ -1,116 +1,161 @@
-# SkinSenseAI 
-AI-Assisted Skin Health Assessment with Explainable RAG Support
+# SkinSenseAI  
+**AI-Assisted Skin Health Risk Assessment with Explainable Retrieval-Augmented Intelligence**
 
-Overview
+---
 
-SkinSenseAI is an AI-powered skin health assistant designed to support awareness and early risk assessment of common skin conditions using computer vision and retrieval-augmented generation (RAG).
+## Overview
 
-The system analyzes user-provided skin images along with structured metadata and optional prescriptions to:
+SkinSenseAI is a modular AI system designed to assist in early risk awareness of common dermatological conditions through multimodal analysis and explainable retrieval-augmented generation (RAG).
 
-Identify possible skin conditions
+The platform combines:
 
-Provide educational explanations using trusted medical sources
+- Computer vision–based image classification  
+- Structured metadata processing  
+- Optional prescription parsing  
+- Context-aware medical document retrieval  
 
-Generate a severity score to guide next steps
+to generate interpretable outputs that prioritize education, transparency, and safety.
 
-Assist users in understanding prescriptions through a questionnaire-based AI chat
+⚠️ **Important:** SkinSenseAI is not a diagnostic system. It is strictly an educational support tool and does not replace licensed medical consultation.
 
-⚠️ Important: SkinSenseAI is not a medical diagnostic tool. It is intended strictly for educational and informational purposes and does not replace professional medical advice.
+---
 
-Key Features
+## System Objectives
 
-📸 Image-based skin condition detection (CNN-based inference)
+SkinSenseAI is engineered to:
 
-🧾 Optional prescription parsing for contextual understanding
+- Detect probable skin condition categories from user-submitted images
+- Provide medically grounded educational explanations
+- Estimate a severity index to guide urgency awareness
+- Reduce uncertainty through adaptive follow-up questioning
+- Maintain explainability using source-backed retrieval
 
-🧠 RAG-powered explanations using curated medical documents
+---
 
-📊 Severity scoring system to assess urgency
+## Core Features
 
-💬 Adaptive questionnaire to reduce uncertainty
+### 📸 CNN-Based Skin Image Classification
+Deep learning inference pipeline built with TensorFlow/Keras for condition category prediction.
 
-🔍 Explainable outputs with source citations
+### 🧾 Prescription Parsing (Optional)
+OCR-driven extraction of prescription data for contextual analysis and explanation.
 
-🔐 Privacy-aware design with user-controlled data deletion
+### 🧠 Retrieval-Augmented Explanations (RAG)
+Medical knowledge retrieval using vector similarity search with FAISS and LangChain, ensuring outputs are grounded in curated clinical documents.
 
-Tech Stack
-Frontend
+### 📊 Severity Scoring Engine
+Heuristic + model-confidence-based scoring mechanism to communicate potential urgency.
 
-React 
+### 💬 Adaptive AI Questionnaire
+Dynamic follow-up questioning to reduce ambiguity and improve interpretability.
 
-TypeScript (strict mode)
+### 🔍 Explainable Outputs
+Citations from retrieved medical sources included in responses to enhance trust and transparency.
 
-Vite
+### 🔐 Privacy-First Architecture
+User-controlled data lifecycle with secure inter-service communication.
 
-TanStack Query
+---
 
-Zod (runtime validation)
+## Architecture Overview
 
-Backend
+SkinSenseAI follows a decoupled, multi-service architecture:
 
-Node.js
+- **Frontend**: User interaction, validation, result visualization  
+- **Backend API Layer**: Request orchestration, validation, rate limiting  
+- **AI Service Layer**: Model inference, vector retrieval, OCR processing  
 
-Express
+This separation ensures scalability, maintainability, and clear responsibility boundaries.
 
-REST APIs
+---
 
-Rate limiting & validation middleware
+## Technology Stack
 
-AI & ML
+### Frontend
+- React  
+- TypeScript (strict mode)  
+- Vite  
+- TanStack Query  
+- Zod (runtime schema validation)
 
-Python
+### Backend
+- Node.js  
+- Express  
+- RESTful API design  
+- Rate limiting & validation middleware  
 
-TensorFlow / Keras
+### AI & Machine Learning
+- Python  
+- TensorFlow / Keras  
+- CNN-based image classification  
+- LangChain  
+- FAISS vector store  
+- OCR pipeline for prescription parsing  
 
-CNN-based image classification
+---
 
-LangChain
+## Repository Structure
+SkinSenseAI/<br>
+├── SkinSenseAI-frontend/ # React + TypeScript client<br>
+├── skinsenseai-backend/ # Node.js + Express API<br>
+├── ai-services/ # Python ML & RAG services<br>
+├── docs/ # Architecture, research & documentation<br>
+├── LICENSE<br>
+└── README.md<br>
 
-FAISS vector store
+---
 
-OCR for prescription parsing
+## Safety, Ethics & Responsible AI
 
-Project Structure
-SkinSenseAI/
-├── skinsenseai-frontend/       # React + TypeScript
-├── skinsenseai-backend/        # Node.js + Express API
-├── ai-services/    # Python AI & RAG services
-├── docs/           # Architecture & reports
-├── LICENSE
-└── README.md
+SkinSenseAI integrates safety principles aligned with responsible AI-assisted healthcare systems:
 
-Medical Safety & Ethics
+- Explicit consent and disclaimer gate  
+- Confidence-aware predictions (uncertainty handling)  
+- No definitive diagnosis or treatment recommendation  
+- Escalation prompts for high-risk outputs  
+- Awareness of model bias across diverse skin tones  
+- Transparent retrieval citations  
 
-Explicit user consent & disclaimer gate
+---
 
-Confidence-aware outputs (model uncertainty handling)
+## Data Privacy & Security
 
-No definitive diagnosis or treatment prescriptions
+- Images processed ephemerally unless explicit consent is provided  
+- No persistent storage without user approval  
+- User-initiated deletion supported  
+- Secure service-to-service communication  
+- Minimal data retention policy  
 
-Emergency escalation suggestions for high-risk cases
+---
 
-Bias awareness toward skin tone diversity
+## Intended Use
 
-Data Privacy
+SkinSenseAI is designed for:
 
-Images processed temporarily
+- Educational awareness  
+- Risk understanding  
+- Research demonstration  
+- AI system experimentation in medical support contexts  
 
-No long-term storage without consent
+It is not intended for clinical deployment.
 
-User-initiated data deletion supported
+---
 
-Secure API communication between services
+## License
 
-License
+Licensed under the MIT License.  
+See the `LICENSE` file for details.
 
-This project is licensed under the MIT License.
-See the LICENSE file for details.
+---
 
-Disclaimer
+## Disclaimer
 
-SkinSenseAI does not provide medical diagnoses, prescriptions, or treatment plans.
-Always consult a qualified medical professional for health-related concerns.
+SkinSenseAI does not provide medical diagnoses, prescriptions, or treatment plans.  
+Always consult a qualified healthcare professional for medical concerns.
 
-Contributors
+---
 
-SkinSenseAI Team
+## Contributors
+
+SkinSenseAI Team 
+Nihir Borkar | Sakshi Khangar | Sanika Kharat
