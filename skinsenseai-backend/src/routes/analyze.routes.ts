@@ -20,6 +20,15 @@ import { analyzeImage, getAnalysisStatus } from "../controllers/analyze.controll
 
 const router = Router();
 
+// TEST GET ROUTE - Just to verify routing works
+router.get('/', (req, res) => {
+    res.json({
+        success: true,
+        message: "Analyze route is registered and working!",
+        info: "This endpoint accepts POST requests with image upload"
+    });
+});
+
 /* POST /api/analyze
   - Main endpoint for image analysis
  */

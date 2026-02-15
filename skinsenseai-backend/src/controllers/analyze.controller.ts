@@ -48,6 +48,7 @@ export const analyzeImage = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
+
     // Step 1: Validate Request
 
     if (!req.file) {
@@ -129,13 +130,9 @@ export const analyzeImage = async (
 
     // Step 6: Send response to frontend
     res
-      .status(200)
-      .json(
-        successResponse(
-          enrichedResult,
-          "Image analysis completed successfully",
-        ),
-      );
+    .status(200)
+    .json(successResponse(enrichedResult, "Image analysis completed successfully"));
+
   } catch (error) {
     // Error Handling
     logger.error('Analysis failed', error);

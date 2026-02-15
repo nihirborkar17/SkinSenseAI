@@ -9,12 +9,15 @@
  *   4. Transform AI responses into our format
  */
 
+// IMPORT THIS FIRST - loads .env
+import '../config/env.config.js';
+
+
 import axios, { AxiosError } from "axios";
 import FormData from "form-data";
 import { AIAnalyzeResponse, AIChatResponse } from "../types/response.types.js";
 import { logger } from "../utils/logger.utils.js";
 import { AppError } from "../middleware/error.middleware.js";
-import { originAgentCluster } from "helmet";
 
 /*
  * AI SERVICE CLASS
@@ -27,6 +30,7 @@ class AIService {
   private readonly chatUrl: string;
   private readonly apiKey: string | undefined;
   private readonly timeout: number = 30000; // 30 Second default timeout
+  private readonly useMockData: boolean; // 🆕 Mock mode flag
 
   // Constructor
   // Runs when we create a new instance: new AIService()
@@ -36,12 +40,25 @@ class AIService {
       process.env.AI_PREDICT_URL || "http://localhost:5000/predict";
     this.chatUrl = process.env.AI_CHAT_URL || "http://localhost:5000/chat";
     this.apiKey = process.env.AI_API_KEY;
+    
+    // 🆕 Enable mock mode if AI_MOCK_MODE is true
+    this.useMockData = process.env.AI_MOCK_MODE === 'true';
+
+    // 🔍 Debug logging
+    console.log('=== AI SERVICE INITIALIZATION ===');
+    console.log('AI_MOCK_MODE from env:', process.env.AI_MOCK_MODE);
+    console.log('useMockData:', this.useMockData);
+    console.log('predictUrl:', this.predictUrl);
+    console.log('chatUrl:', this.chatUrl);
+    console.log('=================================');
 
     // Log configuration on startup (helps debugging)
     logger.info("AI Service initialized");
+    logger.info(`Mock Mode: ${this.useMockData ? 'ENABLED' : 'DISABLED'}`);
     logger.debug(`Predict URL: ${this.predictUrl}`);
     logger.debug(`Chat URL: ${this.chatUrl}`);
   }
+  
   /*
    * ANALYZE IMAGE
    * - Sends image to AI team's prediction endpoint
@@ -65,10 +82,17 @@ class AIService {
     mimeType: string,
     consentId: string,
   ): Promise<AIAnalyzeResponse> {
+    // 🆕 MOCK MODE: Return simulated response for testing
+    if (this.useMockData) {
+      logger.info('🧪 Mock Mode Active: Returning simulated AI response');
+      return this.getMockAnalysisResponse(fileName, consentId);
+    }
+
     try {
       logger.info(
         `Sending image to AI service for analysis (Consent: ${consentId})`,
       );
+      
       /*
        * CREATE FORMDATA
        * - AI team expects multipart/form-data (standard for file upload)
@@ -107,7 +131,7 @@ class AIService {
         {
           // Request Configuration
           headers: {
-            // FormData automatically sets Content-Tpe with boundary
+            // FormData automatically sets Content-Type with boundary
             ...formData.getHeaders(),
 
             /*
@@ -131,6 +155,7 @@ class AIService {
           validateStatus: (status) => status >= 200 && status < 300,
         },
       );
+      
       /*
        * LOG SUCCESS
        * - Helps track successful requests
@@ -154,6 +179,7 @@ class AIService {
        * 4. Unknown errors
        */
       logger.error("AI analysis failed", error);
+      
       /**
        * Check if it's an Axios error
        *
@@ -177,6 +203,7 @@ class AIService {
             { reason: "Request timeout", timeout: this.timeout },
           );
         }
+        
         /**
          * CONNECTION ERROR
          *
@@ -188,11 +215,12 @@ class AIService {
          */
         if (axiosError.code === "ECONNREFUSED") {
           throw new AppError(
-            "AI service is currently unavailable. Please Try again later.",
+            "AI service is currently unavailable. Please try again later.",
             503,
             { reason: "Cannot connect to AI service" },
           );
         }
+        
         /**
          * HTTP ERROR RESPONSE
          *
@@ -202,9 +230,10 @@ class AIService {
         if (axiosError.response) {
           const status = axiosError.response?.status;
           const data = axiosError.response?.data as any;
+          
           /*
-           * EXTRACT ERROR MESSAGE SAFELY
-           *Try multiple common error message formats:
+           * EXTRACT ERROR MESSAGE SAFELY - ✅ FIXED
+           * Try multiple common error message formats:
            * 1. data.message
            * 2. data.error
            * 3. Stringified data
@@ -212,13 +241,15 @@ class AIService {
            */
           const errorMessage =
             data?.message ||
-            data?.error(typeof data === "string" ? data : "Analysis failed");
+            data?.error ||
+            (typeof data === "string" ? data : "Analysis failed");
 
           throw new AppError(`AI service error: ${errorMessage}`, status, {
-            aiReponse: data,
+            aiResponse: data, // ✅ Fixed typo: aiReponse → aiResponse
           });
         }
       }
+      
       /*
        * UNKNOWN ERROR
        * Something unexpected happened
@@ -251,18 +282,25 @@ class AIService {
     question: string,
     consentId?: string,
   ): Promise<AIChatResponse> {
+    // 🆕 MOCK MODE: Return simulated RAG response
+    if (this.useMockData) {
+      logger.info('🧪 Mock Mode Active: Returning simulated RAG response');
+      return this.getMockChatResponse(disease, question, consentId);
+    }
+
     try {
       logger.info(`Sending chat request to RAG service`, {
         disease,
         consentId,
       });
+      
       /*
        * SEND REQUEST TO RAG ENDPOINT
        * unlike image upload, this is JSON (not formData)
        * Request Body:
        * {
        *   disease: "Eczema",
-       *   question: "How do I treat this?"k,
+       *   question: "How do I treat this?",
        *   consentId: "uuid" (optional)
        * }
        */
@@ -281,10 +319,12 @@ class AIService {
           timeout: this.timeout,
         },
       );
+      
       logger.info("RAG chat successful", {
         disease,
         answerLength: response.data.answer?.length,
       });
+      
       return response.data;
     } catch (error) {
       logger.error("RAG chat failed", error);
@@ -292,32 +332,42 @@ class AIService {
       // Similar error handling as analyzeImage
       if (axios.isAxiosError(error)) {
         const axiosError = error as AxiosError;
+        
         if (axiosError.code === "ECONNABORTED") {
-          throw new AppError("chat request timed out. Please try again.", 504, {
+          throw new AppError("Chat request timed out. Please try again.", 504, {
             reason: "Request timeout",
           });
         }
+        
         if (axiosError.code === "ECONNREFUSED") {
           throw new AppError("Chat service is currently unavailable.", 503, {
             reason: "Cannot connect to RAG service",
           });
         }
+        
         if (axiosError.response) {
           const status = axiosError.response.status;
           const data = axiosError.response.data as any;
+          
+          const errorMessage =
+            data?.message ||
+            data?.error ||
+            (typeof data === "string" ? data : "Chat failed");
+          
           throw new AppError(
-            `Chat Service error: ${data?.message || "Chat failed"}`,
+            `Chat service error: ${errorMessage}`,
             status,
             { ragResponse: data },
           );
         }
       }
 
-      throw new AppError("Unexpected Error in RAG chat", 500, {
+      throw new AppError("Unexpected error in RAG chat", 500, {
         originalError: error instanceof Error ? error.message : "Unknown Error",
       });
     }
   }
+  
   /*
    * HEALTH CHECK (Optional but useful)
    * Ping the AI service to check if it's alive
@@ -334,8 +384,129 @@ class AIService {
       return false;
     }
   }
+
+  // =================================================================
+  // 🆕 MOCK MODE METHODS (For testing before AI team is ready)
+  // =================================================================
+
+  /**
+   * Generate mock AI analysis response
+   * Simulates what the AI team's prediction API will return
+   * 
+   * @param fileName - Original file name (for logging)
+   * @param consentId - Consent ID (for logging)
+   * @returns Simulated AIAnalyzeResponse
+   */
+  private getMockAnalysisResponse(fileName: string, consentId: string): AIAnalyzeResponse {
+    // Simulate processing delay (200-500ms)
+    const processingTime = Math.floor(Math.random() * 300) + 200;
+    
+    // List of test diseases from HAM10000 dataset
+    const mockDiseases = [
+      'eczema',
+      'psoriasis', 
+      'acne',
+      'dermatitis',
+      'rosacea',
+      'fungal_infection',
+      'melanocytic_nevi', // From HAM10000
+      'basal_cell_carcinoma', // From HAM10000
+    ];
+    
+    // Randomly select a disease
+    const randomIndex = Math.floor(Math.random() * mockDiseases.length);
+    const primaryDisease = mockDiseases[randomIndex];
+    
+    // Generate random confidence (between 0.65 and 0.95)
+    const primaryConfidence = 0.65 + Math.random() * 0.3;
+    
+    // Generate top 3 predictions (using 'label' as per AIPrediction type)
+    const topPredictions = [
+      { 
+        label: primaryDisease, 
+        confidence: parseFloat(primaryConfidence.toFixed(2)) 
+      },
+      { 
+        label: mockDiseases[(randomIndex + 1) % mockDiseases.length], 
+        confidence: parseFloat((primaryConfidence - 0.15).toFixed(2)) 
+      },
+      { 
+        label: mockDiseases[(randomIndex + 2) % mockDiseases.length], 
+        confidence: parseFloat((primaryConfidence - 0.25).toFixed(2)) 
+      },
+    ];
+
+    logger.info(`🧪 Mock Prediction Generated`, {
+      fileName,
+      consentId,
+      disease: primaryDisease,
+      confidence: `${(primaryConfidence * 100).toFixed(1)}%`,
+      processingTime: `${processingTime}ms`,
+    });
+
+    return {
+      success: true,
+      prediction: {
+        condition: primaryDisease,
+        confidence: parseFloat(primaryConfidence.toFixed(2)),
+        top_predictions: topPredictions,
+        processing_time: processingTime,
+      },
+      metadata: {
+        model_version: 'mock-cnn-v1.0-ham10000',
+        processing_time: processingTime,
+      },
+    };
+  }
+
+  /**
+   * Generate mock RAG chat response
+   * Simulates what the RAG endpoint will return
+   * 
+   * @param disease - Disease name
+   * @param question - User's question
+   * @param consentId - Optional consent ID
+   * @returns Simulated AIChatResponse
+   */
+  private getMockChatResponse(
+    disease: string, 
+    question: string, 
+    consentId?: string
+  ): AIChatResponse {
+    const processingTime = Math.floor(Math.random() * 300) + 100;
+
+    logger.info(`🧪 Mock RAG Response Generated`, {
+      disease,
+      questionLength: question.length,
+      consentId,
+      processingTime: `${processingTime}ms`,
+    });
+
+    // Generate contextual mock answer
+    const mockAnswer = `**Mock RAG Response for ${disease}**\n\n` +
+      `Your question: "${question}"\n\n` +
+      `This is a simulated response. In production, this will be replaced with:\n` +
+      `- Detailed medical information from research papers\n` +
+      `- Evidence-based treatment recommendations\n` +
+      `- Citations from HAM10000 dataset documentation\n` +
+      `- Contextualized answers based on your specific condition\n\n` +
+      `*Note: Please consult a healthcare professional for actual medical advice.*`;
+
+    return {
+      success: true,
+      answer: mockAnswer,
+      sources: [
+        'HAM10000 Dataset Documentation - Harvard Dataverse',
+        `${disease} Research Paper - PubMed Central`,
+        'Dermatology Clinical Guidelines - WHO',
+      ],
+      context: `Mock context for ${disease}`,
+    };
+  }
+
   // Class End
 }
+
 /*
  * EXPORT SINGLETON INSTANCE
  *
@@ -349,4 +520,3 @@ class AIService {
  * const result = await aiService.analyzeImage(...);
  */
 export const aiService = new AIService();
-
