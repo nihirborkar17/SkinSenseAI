@@ -1,0 +1,71 @@
+// This is your Prisma schema file
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// User Model
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String   // Will be hashed with bcrypt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  assessments Assessment[]
+  consentLogs ConsentLog[]
+
+  @@map("users")
+}
+
+// Assessment Model (Stores analysis results)
+model Assessment {
+  id          String   @id @default(uuid())
+  userId      String
+  imageUrl    String   // Path or URL to stored image
+  condition   String   // e.g., "Psoriasis", "Eczema"
+  confidence  Float    // 0.0 to 1.0
+  description String?
+  urgencyLevel String? // "low", "medium", "high"
+  timestamp   DateTime @default(now())
+
+  // Relations
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chatHistory ChatHistory[]
+
+  @@map("assessments")
+  @@index([userId])
+}
+
+// Chat History Model (Stores Q&A conversations)
+model ChatHistory {
+  id           String   @id @default(uuid())
+  assessmentId String
+  question     String   @db.Text
+  answer       String   @db.Text
+  timestamp    DateTime @default(now())
+
+  // Relations
+  assessment Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+
+  @@map("chat_history")
+  @@index([assessmentId])
+}
+
+// Consent Log Model (Tracks user consent)
+model ConsentLog {
+  id        String   @id @default(uuid())
+  userId    String
+  consentId String   @unique
+  timestamp DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("consent_logs")
+  @@index([userId])
+}
