@@ -1,0 +1,58 @@
+{
+  "eczema": {
+    "condition": "Eczema (Atopic Dermatitis)",
+    "urgencyLevel": "medium",
+    "requiresImmediateAttention": false,
+    "chatEnabled": true,
+    "demoDescription": "A chronic skin condition causing inflammation and itching. (This is demo data - will be replaced by RAG responses)"
+  },
+  "psoriasis": {
+    "condition": "Psoriasis",
+    "urgencyLevel": "medium",
+    "requiresImmediateAttention": false,
+    "chatEnabled": true,
+    "demoDescription": "An autoimmune condition causing rapid skin cell buildup and scaling. (Demo data)"
+  },
+  "acne": {
+    "condition": "Acne Vulgaris",
+    "urgencyLevel": "low",
+    "requiresImmediateAttention": false,
+    "chatEnabled": true,
+    "demoDescription": "Common skin condition caused by clogged hair follicles. (Demo data)"
+  },
+  "dermatitis": {
+    "condition": "Contact Dermatitis",
+    "urgencyLevel": "low",
+    "requiresImmediateAttention": false,
+    "chatEnabled": true,
+    "demoDescription": "Skin rash caused by contact with an irritant or allergen. (Demo data)"
+  },
+  "rosacea": {
+    "condition": "Rosacea",
+    "urgencyLevel": "low",
+    "requiresImmediateAttention": false,
+    "chatEnabled": true,
+    "demoDescription": "Chronic inflammatory condition causing facial redness. (Demo data)"
+  },
+  "melanoma": {
+    "condition": "Possible Melanoma",
+    "urgencyLevel": "high",
+    "requiresImmediateAttention": true,
+    "chatEnabled": false,
+    "demoDescription": "URGENT: Possible serious skin cancer. Requires immediate medical evaluation. (Demo data)"
+  },
+  "fungal_infection": {
+    "condition": "Fungal Skin Infection (Tinea)",
+    "urgencyLevel": "low",
+    "requiresImmediateAttention": false,
+    "chatEnabled": true,
+    "demoDescription": "Contagious fungal infection affecting the skin. (Demo data)"
+  },
+  "unknown": {
+    "condition": "Unidentified Skin Condition",
+    "urgencyLevel": "medium",
+    "requiresImmediateAttention": false,
+    "chatEnabled": false,
+    "demoDescription": "Unable to identify condition. Please consult a healthcare professional. (Demo data)"
+  }
+}

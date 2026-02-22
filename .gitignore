@@ -12,6 +12,7 @@ node_modules/
 dist
 dist-ssr
 *.local
+.prisma/
 
 # Build output
 dist/
@@ -59,3 +60,5 @@ coverage/
 uploads/
 temp/
 tmp/
+.env.production
+uploads/
