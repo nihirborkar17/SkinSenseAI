@@ -1,6 +1,6 @@
 // MAIN SERVER
 // Load environment variables FIRST
-import './config/env.config.js';
+import "./config/env.config.js";
 import express, {
   type Application,
   type Request,
@@ -18,11 +18,9 @@ import {
 // importing logger
 import { logger } from "./utils/logger.utils.js";
 // Importing routes
-import analyzeRoutes from './routes/analyze.routes.js';
-import chatRoutes from './routes/chat.routes.js';
-
-
-
+import authRoutes from "./routes/auth.routes.js";
+import analyzeRoutes from "./routes/analyze.routes.js";
+import chatRoutes from "./routes/chat.routes.js";
 
 const app: Application = express();
 const PORT = process.env.PORT || 8000;
@@ -64,6 +62,7 @@ app.get("/api/health", (req: Request, res: Response) => {
 });
 
 // Routes will be added here
+app.use("/api/auth", authRoutes);
 app.use("/api/analyze", analyzeRoutes);
 app.use("/api/chat", chatRoutes);
 
@@ -79,4 +78,4 @@ app.listen(PORT, () => {
   logger.info(`Frontend URL ${process.env.FRONTEND_URL}`);
   logger.info(`AI Predict URL ${process.env.AI_PREDICT_URL}`);
   logger.info(`AI Chat URL ${process.env.AI_CHAT_URL}`);
-})
+});

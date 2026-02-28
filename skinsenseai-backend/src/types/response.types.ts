@@ -2,6 +2,32 @@
     Response Types
 */
 
+// API Response 
+export interface ApiResponse<T = any>{
+  success: boolean;
+  message: string;
+  data?: T;
+  timeStamp: string;
+}
+
+// Auth Response
+export interface AuthResponse{
+  user:{
+    id:string;
+    email: string;
+    createdAt: Date;
+  };
+  token:string;
+}
+
+// User Response 
+export interface UserResponse{
+  id: string;
+  email: string;
+  createdAt: Date;
+  updateAt: Date;
+}
+
 // AI team Response Types
 export interface AIPrediction {
   condition: string;
