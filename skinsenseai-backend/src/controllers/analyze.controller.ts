@@ -14,6 +14,7 @@ import { educationService } from "../services/education.service.js";
 import { successResponse } from "../utils/response.utils.js";
 import { logger } from "../utils/logger.utils.js";
 import { AppError } from "../middleware/error.middleware.js";
+import prisma from "../lib/prisma.js";
 
 /*
     Analyze image controller
@@ -48,9 +49,14 @@ export const analyzeImage = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
+    // Get authenticated user
+    const userId = (req as any).userId;
 
-    // Step 1: Validate Request
+    if (!userId) {
+      throw new AppError("Authentication required", 401);
+    }
 
+    // Validate Request
     if (!req.file) {
       throw new AppError("No image file provided", 400);
     }
@@ -65,7 +71,7 @@ export const analyzeImage = async (
       mimeType: mimetype,
     });
 
-    /* Step 2: Send to AI service 
+    /* Send to AI service 
        -Forward image to AI team's prediction endpoint
 
        aiService.analyzeImage returns:
@@ -87,7 +93,7 @@ export const analyzeImage = async (
       consentId, // For AI team's tracking
     );
 
-    // Step 3: Validate AI Response
+    //Validate AI Response
     if (!aiResponse.success || !aiResponse.prediction) {
       throw new AppError("Invalid response from AI service", 500, {
         aiResponse,
@@ -97,7 +103,7 @@ export const analyzeImage = async (
     // Extract prediction data
     const { condition, confidence } = aiResponse.prediction;
 
-    /* Step 4: Enrich with Educational metadata
+    /* Enrich with Educational metadata
         Add urgency level, chat availability, demo description
 
         educationService.enrichPrediction returns:
@@ -118,8 +124,55 @@ export const analyzeImage = async (
       confidence,
     );
 
-    // Step 5: Log success
+    // save to db
+    logger.info("Saving assessment to database...");
+    const imageReference = `temp/${originalname}`;
+    const savedAssessment = await prisma.assessment.create({
+      data: {
+        userId: userId,
+        imageUrl: imageReference,
+        condition: enrichedResult.condition,
+        confidence: enrichedResult.confidence,
+        description: enrichedResult.description,
+        urgencyLevel: enrichedResult.urgency_level,
+      },
+    });
+
+    // Log Consent
+    if (consentId) {
+      try {
+        await prisma.consentLog.create({
+          data: {
+            userId: userId,
+            consentId: consentId,
+          },
+        });
+        logger.info("Consent logged successfully", userId, consentId);
+      } catch (error) {
+        logger.warn("consent logging failed (possible duplicate)", {
+          consentId,
+          error: error instanceof Error ? error.message : "Unknown Error",
+        });
+      }
+    }
+
+    // Prepare response with database ID
+    const responseData = {
+      assessmentId: savedAssessment.id,
+      condition: enrichedResult.condition,
+      confidence: enrichedResult.confidence,
+      urgency_level: enrichedResult.urgency_level,
+      require_immediate_attention: enrichedResult.requires_immediate_attention,
+      chat_available: enrichedResult.chat_available,
+      description: enrichedResult.description,
+      note: enrichedResult.note,
+      savedAt: savedAssessment.timestamp,
+    };
+
+    //Log success
     logger.info("Analysis completed successfully", {
+      assessementId: savedAssessment.id,
+      userId,
       consentId,
       condition: enrichedResult.condition,
       confidence: enrichedResult.confidence,
@@ -130,12 +183,16 @@ export const analyzeImage = async (
 
     // Step 6: Send response to frontend
     res
-    .status(200)
-    .json(successResponse(enrichedResult, "Image analysis completed successfully"));
-
+      .status(200)
+      .json(
+        successResponse(
+          enrichedResult,
+          "Image analysis completed successfully",
+        ),
+      );
   } catch (error) {
     // Error Handling
-    logger.error('Analysis failed', error);
+    logger.error("Analysis failed", error);
     next(error);
   }
 };
@@ -146,22 +203,74 @@ export const analyzeImage = async (
     For now, analysis is synchronous (return immediately)
 
     Future enhancement: Async processing with job queue
-*/ 
+*/
 
 export const getAnalysisStatus = async (
-    req: Request,
-    res: Response,
-    next: NextFunction
+  req: Request,
+  res: Response,
+  next: NextFunction,
 ): Promise<void> => {
-    try {
-        // Placesholder for future async processing
-        res.status(200).json(
-            successResponse(
-                { status: 'Not implemented yet'},
-                'Status check endpoint'
-            )
-        );
-    } catch (error) {
-        next(error);
+  try {
+    // Placesholder for future async processing
+    res
+      .status(200)
+      .json(
+        successResponse(
+          { status: "Not implemented yet" },
+          "Status check endpoint",
+        ),
+      );
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getAssessmentHistory = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    //Get Authenticated user Id
+    const userId = (req as any).userId;
+
+    if (!userId) {
+      throw new AppError("Authentication required", 401);
     }
+
+    logger.info("Fetching assessment history", { userId });
+
+    // Fetch all assessment of user.
+    const assessments = await prisma.assessment.findMany({
+      where: { userId },
+      orderBy: { timestamp: "desc" },
+      select: {
+        id: true,
+        condition: true,
+        confidence: true,
+        urgencyLevel: true,
+        timestamp: true,
+        imageUrl: true,
+        description: true,
+      },
+    });
+
+    logger.info("Assessment history retrieved", {
+      userId,
+      count: assessments.length,
+    });
+
+    res.status(200).json(
+      successResponse(
+        {
+          assessments,
+          count: assessments.length,
+        },
+        "Assessment history retrieved successfully",
+      ),
+    );
+  } catch (error) {
+    logger.error("Failed to get assessment history", error);
+    next(error);
+  }
 };
