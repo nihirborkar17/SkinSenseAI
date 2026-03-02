@@ -5,7 +5,7 @@
  * - Determines if immediate medical attention needed
  * - Enables/disables chat based on condition
  * - Provides demo descriptions for testing
- * 
+ *
  * What AI team's RAG will do LATER:
  * - Detailed descriptions
  * - Treatment recommendations
@@ -17,7 +17,7 @@ import fs from "fs";
 import path from "path";
 import { AnalysisResult } from "../types/response.types.js";
 import { logger } from "../utils/logger.utils.js";
-import { fileURLToPath } from "url"; 
+import { fileURLToPath } from "url";
 
 /*
   Disease Information Interface
@@ -39,18 +39,16 @@ type DiseaseDatabase = Record<string, DiseaseMetadata>;
 
 // Educational Service Class
 class EducationService {
-  
   // Disease database loaded from JSON file
   private diseaseDatabase: DiseaseDatabase;
 
   // Constructor - Loads disease information from JSON file on initialization
   constructor() {
-    
     // Load diseases.json file
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = path.dirname(__filename);
     const dataPath = path.join(__dirname, "../data/diseases.json");
-    
+
     try {
       /*
         Read and parse JSON file
@@ -87,10 +85,7 @@ class EducationService {
     @param confidenve - AI confidence score
     @return Complete analysis result with metadata
   */
-  enrichPrediction(
-    condition: string, 
-    confidence: number
-  ): AnalysisResult {
+  enrichPrediction(condition: string, confidence: number): AnalysisResult {
     /* NORMALIZE CONDITION NAME 
       - JSON keys are lowercase: 'eczema', 'psoriasis', etc
       - Need consistent matching
@@ -102,13 +97,10 @@ class EducationService {
       - Disease is in our database
       - Confidence is above threshold (AI is reasonably sure)
     */
-    const chatAvailable = 
-    metadata.chatEnabled && 
-    confidence >= 0.5 &&
-    !metadata.requiresImmediateAttention;
+    const chatAvailable = metadata.chatEnabled && confidence >= 0.3;
 
-    // BUILD ANALYSIS RESULT 
-    const result : AnalysisResult = {
+    // BUILD ANALYSIS RESULT
+    const result: AnalysisResult = {
       // from AI prediction
       condition: metadata.condition,
       confidence: confidence,
@@ -122,11 +114,11 @@ class EducationService {
       description: metadata.demoDescription,
 
       // Note for frontend
-      note: chatAvailable 
-        ? 'Chat enabled - Use /api/chat endpoint for RAG-powered Q&A'
-          : metadata.requiresImmediateAttention 
-            ? 'URGENT: Seek immediate medical attention' 
-            : 'Confidence too low for chat - consult healthcare professional',
+      note: chatAvailable
+        ? "Chat enabled - Use /api/chat endpoint for RAG-powered Q&A"
+        : metadata.requiresImmediateAttention
+          ? "URGENT: Seek immediate medical attention"
+          : "Confidence too low for chat - consult healthcare professional",
     };
 
     logger.debug(`Enriched prediction for ${condition}`, {
@@ -139,104 +131,110 @@ class EducationService {
 
     return result;
   }
-  
-  // Normalize condition-name - Converts AI output to our database keys 
-  private normalizeConditionName(condition: string): string {
 
+  // Normalize condition-name - Converts AI output to our database keys
+  private normalizeConditionName(condition: string): string {
     // Step 1: Convert to lowercase
     let normalized = condition.toLowerCase();
 
     // Step 2: Handle special cases / aliases
     const aliases: Record<string, string> = {
-      'atopic dermatitis':'eczema',
-      'atopic_dermatitis':'eczema',
-      'contact dermatitis':'dermatitis',
-      'contact_dermatitis':'dermatitis',
-      'acne vulgaris':'acne',
-      'acne_vulgaris':'acne',
-      'fungal infection':'fungal_infection',
-      'ringworm':'fungal_infection',
-      'athlete\'s foot':'fungal_infection',
-      'tinea':'fungal_infection',
+      "atopic dermatitis": "eczema",
+      atopic_dermatitis: "eczema",
+      "contact dermatitis": "dermatitis",
+      contact_dermatitis: "dermatitis",
+      "acne vulgaris": "acne",
+      acne_vulgaris: "acne",
+      "fungal infection": "fungal_infection",
+      ringworm: "fungal_infection",
+      "athlete's foot": "fungal_infection",
+      tinea: "fungal_infection",
     };
 
-    if(aliases[normalized]){
+    if (aliases[normalized]) {
       normalized = aliases[normalized];
     }
 
     // Step 3: Replace spaces with underscores
-    normalized = normalized.replace(/\\s+/g, '_');
+    normalized = normalized.replace(/\\s+/g, "_");
 
     // Step 4: Remove special characters
-    normalized = normalized.replace(/[^a-z0-9_]/g, '');
+    normalized = normalized.replace(/[^a-z0-9_]/g, "");
 
     return normalized;
   }
 
   // Get disease metadata
-  private getDiseaseMetadata(normalizeCondition: string) : DiseaseMetadata {
+  private getDiseaseMetadata(normalizeCondition: string): DiseaseMetadata {
     // Try to get disease info from database
     const metadata = this.diseaseDatabase[normalizeCondition];
-    if(metadata) {
+    if (metadata) {
       return metadata;
     }
 
     // Fallback to unknown
-    const unknownMetadata = this.diseaseDatabase['unknown'];
-    if(unknownMetadata) {
-      logger.warn(`Disease not found: ${normalizeCondition}, using 'unknown' profile`);
+    const unknownMetadata = this.diseaseDatabase["unknown"];
+    if (unknownMetadata) {
+      logger.warn(
+        `Disease not found: ${normalizeCondition}, using 'unknown' profile`,
+      );
       return unknownMetadata;
     }
 
     // Last Resort: Hardcoded fallback -> this should never happen if diseases.json is correct
     logger.error(`Critical: No metadata found for ${normalizeCondition}`);
     return {
-      condition: 'Unknown Condition',
-      urgencyLevel: 'high',
+      condition: "Unknown Condition",
+      urgencyLevel: "high",
       requiresImmediateAttention: false,
       chatEnabled: false,
-      demoDescription: 'Unable to identify condition. Please consult a healthcare professional.',
+      demoDescription:
+        "Unable to identify condition. Please consult a healthcare professional.",
     };
   }
 
   // Get demo RAG response (Replace this with actual RAG API call when ready!)
-  getDemoRAGResponse(disease: string, question : string): string {
+  getDemoRAGResponse(disease: string, question: string): string {
     const response: Record<string, string> = {
-      'eczema': `**Demo RAG Response for Eczema:**
+      eczema: `**Demo RAG Response for Eczema:**
       Based on medical documentation, here's what you should know:
 
-      ${question.toLowerCase().includes('treat') ? 
-        '**Treatment:** Keep skin moisturized with fragrance-free lotions. Avoid harsh soaps and hot water. Use topical corticosteroids as prescribed by your doctor. Consider antihistamines for severe itching.' :
-        question.toLowerCase().includes('cause') ?
-        '**Causes:** Eczema is caused by a combination of genetic factors and environmental triggers including allergens, irritants, stress, and climate changes.' :
-        '**General Info:** Eczema is a chronic inflammatory skin condition. Consult a dermatologist for personalized treatment.'
+      ${
+        question.toLowerCase().includes("treat")
+          ? "**Treatment:** Keep skin moisturized with fragrance-free lotions. Avoid harsh soaps and hot water. Use topical corticosteroids as prescribed by your doctor. Consider antihistamines for severe itching."
+          : question.toLowerCase().includes("cause")
+            ? "**Causes:** Eczema is caused by a combination of genetic factors and environmental triggers including allergens, irritants, stress, and climate changes."
+            : "**General Info:** Eczema is a chronic inflammatory skin condition. Consult a dermatologist for personalized treatment."
       }
 
       *Note: This is demo data. Real RAG will provide comprehensive, sourced medical information.*`,
 
-      'fungal_infection': `**Demo RAG Response for Fungal Infection:**
+      fungal_infection: `**Demo RAG Response for Fungal Infection:**
 
-      ${question.toLowerCase().includes('treat') ?
-        '**Treatment:** Apply antifungal cream (clotrimazole, miconazole) twice daily for 2-4 weeks. Keep area clean and dry. Wear breathable clothing. Complete full treatment course even if symptoms improve.' :
-        '**General Info:** Fungal infections are contagious. Avoid sharing personal items. If OTC treatments don\'t work after 2 weeks, see a doctor.'
+      ${
+        question.toLowerCase().includes("treat")
+          ? "**Treatment:** Apply antifungal cream (clotrimazole, miconazole) twice daily for 2-4 weeks. Keep area clean and dry. Wear breathable clothing. Complete full treatment course even if symptoms improve."
+          : "**General Info:** Fungal infections are contagious. Avoid sharing personal items. If OTC treatments don't work after 2 weeks, see a doctor."
       }
 
       *Note: Demo response - Real RAG will provide detailed, evidence-based answers with sources.*`,
-      };
-      const normalizedDisease = this.normalizeConditionName(disease);
+    };
+    const normalizedDisease = this.normalizeConditionName(disease);
 
-      return response[normalizedDisease] || 
-        `**Demo RAG Response:**\n\nThis is a simulated response for "${disease}".\n\nQuestion: ${question}\n\n*Real RAG integration coming soon - will provide comprehensive medical information from official documentation.*`;
-    }
-  
-  // Get all supported conditions - Returns list of all conditions 
-  getSupportedConditions(): string[]{
+    return (
+      response[normalizedDisease] ||
+      `**Demo RAG Response:**\n\nThis is a simulated response for "${disease}".\n\nQuestion: ${question}\n\n*Real RAG integration coming soon - will provide comprehensive medical information from official documentation.*`
+    );
+  }
+
+  // Get all supported conditions - Returns list of all conditions
+  getSupportedConditions(): string[] {
     return Object.keys(this.diseaseDatabase)
-      .filter(key => key !== 'unknown')
-      .map(key=> this.diseaseDatabase[key].condition);
+      .filter((key) => key !== "unknown")
+      .map((key) => this.diseaseDatabase[key].condition);
   }
   // Check if condition suppports chat
-  isChatEnabled(condition: string) : boolean{
+  isChatEnabled(condition: string): boolean {
     const normalized = this.normalizeConditionName(condition);
     const metadata = this.diseaseDatabase[normalized];
     return metadata?.chatEnabled || false;

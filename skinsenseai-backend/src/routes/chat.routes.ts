@@ -3,11 +3,12 @@
     - This file handles chat/Q&A functionality
     - User ask questions about their diagnosed condition
     - RAG model provides answer based on medical documentation
-*/ 
+*/
 
 import { Router } from "express";
-import { validateChatRequest } from '../middleware/validation.middleware.js';
+import { validateChatRequest } from "../middleware/validation.middleware.js";
 import { chatWithRAG, getChatHistory } from "../controllers/chat.controller.js";
+import { authenticateToken } from "../middleware/auth.middleware.js";
 
 // Create router instance
 const router = Router();
@@ -39,17 +40,17 @@ Success response (200):
  - 403: Chat disabled for this condition (e.g., melanoma)
  - 503: RAG service unavailable
  - 500: Server error
-*/ 
+*/
 
-router.post('/', // Path: /api/chat/
-    validateChatRequest,
-    chatWithRAG
+router.post(
+  "/", // Path: /api/chat/
+  authenticateToken,
+  validateChatRequest,
+  chatWithRAG,
 );
 
 // GET /api/chat/history -> Get user's chat history
-router.get('/history', 
-    // Auth middleware (going to work on this soon.),
-    getChatHistory
-);
+router.get("/:assessmentId", authenticateToken, getChatHistory);
 
 export default router;
+

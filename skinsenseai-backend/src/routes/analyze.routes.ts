@@ -8,12 +8,17 @@
     Middleware execution order (important): 
      => Request -> upload.single() -> validateImageUpload 
     -> analyzeImage controller -> Response     
-*/ 
+*/
 
 import { Router } from "express";
 import { upload } from "../middleware/upload.middleware.js";
 import { validateImageUpload } from "../middleware/validation.middleware.js";
-import { analyzeImage, getAnalysisStatus } from "../controllers/analyze.controller.js";
+import {
+  analyzeImage,
+  getAnalysisStatus,
+  getAssessmentHistory,
+} from "../controllers/analyze.controller.js";
+import { authenticateToken } from "../middleware/auth.middleware.js";
 
 // Create router instance
 // Router is like an mini Express app
@@ -21,27 +26,28 @@ import { analyzeImage, getAnalysisStatus } from "../controllers/analyze.controll
 const router = Router();
 
 // TEST GET ROUTE - Just to verify routing works
-router.get('/', (req, res) => {
-    res.json({
-        success: true,
-        message: "Analyze route is registered and working!",
-        info: "This endpoint accepts POST requests with image upload"
-    });
+router.get("/", (req, res) => {
+  res.json({
+    success: true,
+    message: "Analyze route is registered and working!",
+    info: "This endpoint accepts POST requests with image upload",
+  });
 });
 
 /* POST /api/analyze
   - Main endpoint for image analysis
  */
-router.post('/', 
-    upload.single('image'),
-    validateImageUpload,
-    analyzeImage
+router.post(
+  "/",
+  authenticateToken,
+  upload.single("image"),
+  validateImageUpload,
+  analyzeImage,
 );
 
 // GET /api/analyze/status/:id
-router.get(
-    '/status/:id',
-    getAnalysisStatus
-);
+router.get("/status/:id", authenticateToken, getAnalysisStatus);
+
+router.get("/history", authenticateToken, getAssessmentHistory);
 
 export default router;
