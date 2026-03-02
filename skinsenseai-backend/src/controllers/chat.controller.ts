@@ -9,16 +9,18 @@
   flow: 
   frontend -> Express Route -> current Controller 
   -> AI Service (RAG) -> Response
-*/ 
+*/
 
-import type { Request, Response, NextFunction } from 'express';
-import { aiService } from '../services/ai.service.js';
-import { educationService } from '../services/education.service.js';
-import { successResponse } from '../utils/response.utils.js';
-import { logger } from '../utils/logger.utils.js';
-import { AppError } from '../middleware/error.middleware.js';
-import { sourceMapsEnabled } from 'node:process';
-import { isDeepStrictEqual } from 'node:util';
+import type { Request, Response, NextFunction } from "express";
+import { aiService } from "../services/ai.service.js";
+import { educationService } from "../services/education.service.js";
+import { successResponse } from "../utils/response.utils.js";
+import { logger } from "../utils/logger.utils.js";
+import { AppError } from "../middleware/error.middleware.js";
+import { sourceMapsEnabled } from "node:process";
+import { isDeepStrictEqual } from "node:util";
+import prisma from "../lib/prisma.js";
+import { count } from "node:console";
 
 /* Chat with RAG controller
     Handles POST /api/chat request
@@ -43,97 +45,156 @@ import { isDeepStrictEqual } from 'node:util';
             isDemoResponse: true // Indicates this is demo data
         }
     }
-*/ 
+*/
 export const chatWithRAG = async (
-    req: Request,
-    res: Response,
-    next: NextFunction
+  req: Request,
+  res: Response,
+  next: NextFunction,
 ): Promise<void> => {
-    try{
-        // Step 1. Extract Request Data
-        const { disease, question, consentId } = req.body;
+  try {
+    // Get authenticated user ID
+    const userId = (req as any).userId;
 
-        // Log the request
-        logger.info('Chat request received', {
-            disease, 
-            questionLength: question.length,
-            consentId,
-        });
+    if (!userId) throw new AppError("Authentication required", 401);
 
-        // Step 2: Check if chat is enabled for this disease
-        const chatEnabled = educationService.isChatEnabled(disease);
+    // Extract Request Data
+    const { disease, question, consentId, assessmentId } = req.body;
 
-        if(!chatEnabled) {
-            throw new AppError(
-                'Chat is not available for this condition. Please consult a healthcare professional!',
-                403, 
-                { disease, reason: "Chat disabled for this condition"}
-            );
-        }
+    // Validate required fields
+    if (!assessmentId) throw new AppError("Assessment Id is required", 400);
 
-        // Step 3: Call RAG Service
-        // TODO: Must replace with RAG API call when AI team is ready
-        // For now, Using Demo response for testing
-        // Later, we will call the aiService.chatWithRAG() call
-        logger.info('Generating demo RAG Response...');
+    if (!question || question.trim().length === 0)
+      throw new AppError("Question is required", 400);
 
-        const demoAnswer = educationService.getDemoRAGResponse(disease, question);
+    if (!disease) throw new AppError("Disease is required", 400);
 
-        const chatResponse = {
-            question: question,
-            answer: demoAnswer,
-            disease: disease,
-            source: [],
-            isDemoResponse: true,
-            note: 'This is demo response. Real RAG integration is in process.',
-        };
+    // Log the request
+    logger.info("Chat request received", {
+      userId,
+      assessmentId,
+      disease,
+      questionLength: question.length,
+      consentId,
+    });
 
-        // // RAG API 
-        // logger.info('Forwarding to RAG service...');
+    // Verify assessment exists and belongs to user
+    const assessment = await prisma.assessment.findFirst({
+      where: {
+        id: assessmentId,
+        userId: userId,
+      },
+    });
 
-        // const ragResponse = await aiService.chatWithRAG(
-        //     disease,
-        //     question,
-        //     consentId
-        // );
-        // if(!ragResponse.success || !.ragResponse.answer) {
-        //     throw new AppError(
-        //         'Invalid response from RAG server',
-        //         500,
-        //         { ragResponse }
-        //     );
-        // }
-
-        // const chatResponse = {
-        //     question: question,
-        //     answer: ragResponse.answer,
-        //     disease: disease,
-        //     source: ragResponse.sources || [],
-        //     context: ragResponse.context,
-        //     isDemoResponse: false,
-        // };
-
-        // Step 4: Log success
-        logger.info('Chat response generated', {
-            disease, 
-            answerLength: chatResponse.answer.length,
-            isDemoResponse: chatResponse.isDemoResponse,
-        });
-
-        // Step 5: Send Response
-        res.status(200).json(
-            successResponse(
-                chatResponse,
-                'Answer generated successfully'
-            )
-        );
-
+    if (!assessment) {
+      throw new AppError(
+        "Assessment not found or does not belong to user",
+        404,
+      );
     }
-    catch (error) {
-        // ERROR HANDLING
-        logger.error('Chat request failed', error);
-        next(error);
+
+    logger.info("Assessment verified", {
+      assessmentId,
+      condition: assessment.condition,
+    });
+
+    // Check if chat is enabled for this disease
+    const chatEnabled = educationService.isChatEnabled(disease);
+
+    if (!chatEnabled) {
+      throw new AppError(
+        "Chat is not available for this condition. Please consult a healthcare professional!",
+        403,
+        { disease, reason: "Chat disabled for this condition" },
+      );
     }
+
+    // Call RAG Service
+    // TODO: Must replace with RAG API call when AI team is ready
+    // For now, Using Demo response for testing
+    // Later, we will call the aiService.chatWithRAG() call
+    logger.info("Generating demo RAG Response...");
+
+    const demoAnswer = educationService.getDemoRAGResponse(disease, question);
+
+    // save chat to db
+    const savedChat = await prisma.chatHistory.create({
+      data: {
+        assessmentId: assessmentId,
+        question: question.trim(),
+        answer: demoAnswer,
+      },
+    });
+
+    //Prepare Response
+    const chatResponse = {
+      chatId: savedChat.id,
+      assessmentId: assessmentId,
+      question: question,
+      answer: demoAnswer,
+      disease: disease,
+      source: [],
+      isDemoResponse: true,
+      note: "This is demo response. Real RAG integration is in process.",
+      savedAt: savedChat.timestamp,
+    };
+
+    // // RAG API
+    // logger.info('Forwarding to RAG service...');
+
+    // const ragResponse = await aiService.chatWithRAG(
+    //     disease,
+    //     question,
+    //     consentId
+    // );
+    // if(!ragResponse.success || !.ragResponse.answer) {
+    //     throw new AppError(
+    //         'Invalid response from RAG server',
+    //         500,
+    //         { ragResponse }
+    //     );
+    // }
+    //
+    // save real Rag response to db
+    //
+    // const savedChat = await primsa.chatHistory.create({
+    //  data: {
+    // 		assessmentId: assessmentId,
+    // 		question: question.trim(),
+    // 		answer: ragResponse.answer,
+    // 		},
+    // 	})
+
+    // const chatResponse = {
+    //     chatId: savedChat.id,
+    //     assessmentId: assessmentId,
+    //     question: question,
+    //     answer: ragResponse.answer,
+    //     disease: disease,
+    //     source: ragResponse.sources || [],
+    //     context: ragResponse.context,
+    //     isDemoResponse: false,
+    //     savedAt: savedChat.timestamp,
+    // };
+
+    // Step 4: Log success
+    logger.info("Chat response generated", {
+      chatId: savedChat.id,
+      assessmentId,
+      userId,
+      disease,
+      answerLength: chatResponse.answer.length,
+      isDemoResponse: chatResponse.isDemoResponse,
+    });
+
+    // Step 5: Send Response
+    res
+      .status(200)
+      .json(successResponse(chatResponse, "Answer generated successfully"));
+  } catch (error) {
+    // ERROR HANDLING
+    logger.error("Chat request failed", error);
+    next(error);
+  }
 };
 
 /* GET CHAT HISTORY
@@ -144,23 +205,79 @@ Requires:
  - Database to store conversation
  - User authentication
  - Session management
-*/ 
+*/
 
 export const getChatHistory = async (
-    req: Request,
-    res: Response,
-    next: NextFunction
+  req: Request,
+  res: Response,
+  next: NextFunction,
 ): Promise<void> => {
-    try{
-        // placeHolder for future code implementation
-        res.status(200).json(
-            successResponse(
-                { history: [] },
-                'Chat history endpoint - not implemented yet'
-            )
-        );
+  try {
+    // Get authenticated userId
+    const userId = (req as any).userId;
+    if (!userId) {
+      throw new AppError("Authentication required", 401);
     }
-    catch (error) {
-        next(error);
+
+    // Get assessmentID from URL Params
+    const { assessmentId } = req.params;
+
+    if (!assessmentId) {
+      throw new AppError("Assessment Id is required");
     }
+
+    if (typeof assessmentId !== "string") {
+      throw new AppError("Invalid Assessment Id");
+    }
+
+    logger.info("Fetching chat history", {
+      userId,
+      assessmentId,
+    });
+
+    // Verifyu assessment exists and belongs to user
+    const assessment = await prisma.assessment.findFirst({
+      where: {
+        id: assessmentId,
+        userId: userId,
+      },
+    });
+
+    if (!assessment) {
+      throw new AppError(
+        "Assessment not found or does not belong to user",
+        404,
+      );
+    }
+
+    // Get Chat history for this assessment
+    const chatHistory = await prisma.chatHistory.findMany({
+      where: { assessmentId },
+      orderBy: { timestamp: "asc" },
+      select: {
+        id: true,
+        question: true,
+        answer: true,
+        timestamp: true,
+      },
+    });
+
+    logger.info("Chat history retrieved", {
+      assessmentId,
+      count: chatHistory.length,
+    });
+
+    res.status(200).json(
+      successResponse(
+        {
+          history: chatHistory,
+          count: chatHistory.length,
+        },
+        "Chat history retrieved successfully",
+      ),
+    );
+  } catch (error) {
+    logger.error("Failed to get chat history", error);
+    next(error);
+  }
 };
