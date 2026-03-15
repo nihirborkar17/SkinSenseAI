@@ -185,10 +185,7 @@ export const analyzeImage = async (
     res
       .status(200)
       .json(
-        successResponse(
-          enrichedResult,
-          "Image analysis completed successfully",
-        ),
+        successResponse(responseData, "Image analysis completed successfully"),
       );
   } catch (error) {
     // Error Handling

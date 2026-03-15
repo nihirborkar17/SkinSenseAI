@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useConsent } from "../context/ConsentContext";
 import { showToast } from "../utils/toast.utils";
+import { useAuth } from "../hooks/useAuth";
 
 interface ImageData {
   id: string;
@@ -12,6 +13,7 @@ interface ImageData {
 const AssessmentPage = () => {
   const navigate = useNavigate();
   const { consentData } = useConsent();
+  const { token } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
@@ -70,7 +72,7 @@ const AssessmentPage = () => {
           preview: reader.result as string,
         };
         newImages.push(newImage);
-        
+
         // When all readers are done, update state
         if (newImages.length === filesToAdd.length) {
           setImages((prev) => [...prev, ...newImages]);
@@ -85,25 +87,25 @@ const AssessmentPage = () => {
   const startCamera = async (facingMode: "user" | "environment" = "user") => {
     try {
       setCameraError("");
-      
+
       // Stop any existing stream
       if (cameraStream) {
-        cameraStream.getTracks().forEach(track => track.stop());
+        cameraStream.getTracks().forEach((track) => track.stop());
       }
 
       // Request camera access
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { 
+        video: {
           facingMode: facingMode,
           width: { ideal: 1280 },
-          height: { ideal: 720 }
+          height: { ideal: 720 },
         },
-        audio: false
+        audio: false,
       });
 
       setCameraStream(stream);
       setShowCamera(true);
-      
+
       // Attach stream to video element
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
@@ -111,7 +113,7 @@ const AssessmentPage = () => {
     } catch (error: any) {
       console.error("Camera error:", error);
       setCameraError("Failed to access camera. Please check permissions.");
-      
+
       // Fallback to file input if getUserMedia fails
       if (cameraInputRef.current) {
         cameraInputRef.current.click();
@@ -132,35 +134,39 @@ const AssessmentPage = () => {
     // Set canvas dimensions to match video
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
-    
+
     // Draw current video frame to canvas
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
-    
+
     // Convert canvas to Blob
-    canvas.toBlob((blob) => {
-      if (blob) {
-        // Create a File from Blob
-        const file = new File([blob], `camera-photo-${Date.now()}.jpg`, {
-          type: "image/jpeg"
-        });
-        
-        // Create FileList-like object
-        const dataTransfer = new DataTransfer();
-        dataTransfer.items.add(file);
-        
-        // Handle the captured photo
-        handleFileSelect(dataTransfer.files);
-        
-        // Close camera
-        stopCamera();
-      }
-    }, "image/jpeg", 0.95);
+    canvas.toBlob(
+      (blob) => {
+        if (blob) {
+          // Create a File from Blob
+          const file = new File([blob], `camera-photo-${Date.now()}.jpg`, {
+            type: "image/jpeg",
+          });
+
+          // Create FileList-like object
+          const dataTransfer = new DataTransfer();
+          dataTransfer.items.add(file);
+
+          // Handle the captured photo
+          handleFileSelect(dataTransfer.files);
+
+          // Close camera
+          stopCamera();
+        }
+      },
+      "image/jpeg",
+      0.95,
+    );
   };
 
   // Stop Camera
   const stopCamera = () => {
     if (cameraStream) {
-      cameraStream.getTracks().forEach(track => track.stop());
+      cameraStream.getTracks().forEach((track) => track.stop());
       setCameraStream(null);
     }
     setShowCamera(false);
@@ -171,7 +177,7 @@ const AssessmentPage = () => {
   useEffect(() => {
     return () => {
       if (cameraStream) {
-        cameraStream.getTracks().forEach(track => track.stop());
+        cameraStream.getTracks().forEach((track) => track.stop());
       }
     };
   }, [cameraStream]);
@@ -227,37 +233,80 @@ const AssessmentPage = () => {
   // Handle image analysis submission
   const handleAnalyze = async () => {
     if (images.length === 0 || !consentData) return;
+
     setIsAnalyzing(true);
-    const loadingToast = showToast.loading('Analyzing your image...');
+    const loadingToast = showToast.loading("Analyzing your image...");
 
     try {
       // Replace with backend API call
       const formData = new FormData();
-      images.forEach((img, index) => {
-        formData.append(`image_${index}`, img.file);
-      });
       formData.append("consentId", consentData.consentId);
-      formData.append("imageCount", images.length.toString());
+      formData.append("image", images[0].file);
 
-      // Simulated API call later will be replaced by API endpoint
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // Backend API with authentication
+      const response = await fetch("http://localhost:8000/api/analyze", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
 
-      // Alert for Now
+      // Check if response is ok
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error("Session expired. Please log in again.");
+        }
+        throw new Error(`API Error: ${response.status}`);
+      }
+
+      // Parse JSON response
+      const result = await response.json();
+
+      // Debug what backend returns
+      console.log("Analyze API Response:", result);
+      console.log("Assessment ID from response:", result.data?.assessmentId);
+
+      // Dismiss loading toast
       showToast.dismiss(loadingToast);
-      showToast.success('Analysis complete for your image!');
 
-      // uncomment this when result page is ready
-      // navigate('/results');
+      // Check if analysis was successful
+      if (result.success && result.data) {
+        showToast.success("Analysis complete!");
+
+        navigate("/results", {
+          state: {
+            assessmentId: result.data.assessmentId,
+            condition: result.data.condition,
+            confidence: result.data.confidence,
+            urgencyLevel: result.data.urgency_level,
+            description: result.data.description,
+            chatAvailable: result.data.chat_available,
+            uploadedImage: images[0].preview,
+            timestamp: result.data.savedAt,
+          },
+        });
+      } else {
+        throw new Error(result.message || "Analysis failed");
+      }
     } catch (error) {
       console.error("Analysis error:", error);
       showToast.dismiss(loadingToast);
-      showToast.error('An error occurred during analysis. Please try again.');
+
+      // User-friendly error messages
+      if (error instanceof TypeError && error.message === "Failed to fetch") {
+        showToast.error("Cannot connect to server.");
+      } else if (error instanceof Error) {
+        showToast.error(error.message);
+      } else {
+        showToast.error("An unexpected error occurred. Please try again.");
+      }
     } finally {
       setIsAnalyzing(false);
     }
   };
 
-    // Render Camera Modal
+  // Render Camera Modal
   const renderCameraModal = () => {
     if (!showCamera) return null;
     return (
@@ -272,8 +321,18 @@ const AssessmentPage = () => {
                 onClick={stopCamera}
                 className="text-gray-500 hover:text-gray-700"
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               </button>
             </div>
@@ -311,9 +370,19 @@ const AssessmentPage = () => {
                     onClick={capturePhoto}
                     className="px-6 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2"
                   >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
                       <circle cx="12" cy="12" r="3" strokeWidth={2} />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                      />
                     </svg>
                     Capture Photo
                   </button>
@@ -328,7 +397,7 @@ const AssessmentPage = () => {
 
   const canAnalyze = images.length > 0 && images.length <= MAX_IMAGES;
 
-return (
+  return (
     <div className="min-h-screen bg-linear-to-b from-blue-50 to-white">
       {/* Header */}
       <header className="bg-white border-b border-gray-200">
@@ -403,8 +472,8 @@ return (
             Upload Your Skin Image
           </h1>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Take or upload a clear, well-lit photo of the skin area
-            you'd like to learn about.
+            Take or upload a clear, well-lit photo of the skin area you'd like
+            to learn about.
           </p>
           <div className="mt-4 inline-flex items-center gap-2 text-sm text-gray-600 bg-blue-50 px-4 py-2 rounded-full">
             <svg
@@ -546,7 +615,10 @@ return (
                 {/* Images Grid */}
                 <div className="flex justify-center">
                   {images.map((image) => (
-                    <div key={image.id} className="relative group max-w-md w-full">
+                    <div
+                      key={image.id}
+                      className="relative group max-w-md w-full"
+                    >
                       {/* Image Preview */}
                       <div className="relative rounded-xl overflow-hidden bg-gray-100 aspect-square">
                         <img
@@ -691,3 +763,4 @@ return (
 };
 
 export default AssessmentPage;
+

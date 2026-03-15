@@ -102,6 +102,25 @@ export const validateChatRequest = (
       message: "Disease information is required",
     });
   }
+
+  // CHECK 3: Assessment ID Exists
+  if (!req.body.assessmentId) {
+    errors.push({
+      field: "assessmentId",
+      message: "Assessment ID is required",
+    });
+  }
+
+  // CHECK 4: Valid UUID Format for assessment ID
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (req.body.assessmentId && !uuidRegex.test(req.body.assessmentId)) {
+    errors.push({
+      field: "assessmentId",
+      message: "Invalid Assessment ID format",
+    });
+  }
+
   // If errors exist, send error response and stop
   if (errors.length > 0) {
     res.status(400).json(ValidationErrorResponse(errors));

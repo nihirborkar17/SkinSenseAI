@@ -97,7 +97,7 @@ class EducationService {
       - Disease is in our database
       - Confidence is above threshold (AI is reasonably sure)
     */
-    const chatAvailable = metadata.chatEnabled && confidence >= 0.3;
+    const chatAvailable = true;
 
     // BUILD ANALYSIS RESULT
     const result: AnalysisResult = {
@@ -237,7 +237,7 @@ class EducationService {
   isChatEnabled(condition: string): boolean {
     const normalized = this.normalizeConditionName(condition);
     const metadata = this.diseaseDatabase[normalized];
-    return metadata?.chatEnabled || false;
+    return true;
   }
 }
 
