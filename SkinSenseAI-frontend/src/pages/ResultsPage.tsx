@@ -193,7 +193,7 @@ const ResultsPage = () => {
               {/* Condition */}
               <div>
                 <label className="text-sm font-medium text-gray-600">
-                  Condition Identified
+                  Disease/Condition Identified
                 </label>
                 <p className="text-2xl font-bold text-gray-900 mt-1">
                   {state.condition}
