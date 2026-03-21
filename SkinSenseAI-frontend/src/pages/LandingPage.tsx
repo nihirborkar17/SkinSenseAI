@@ -397,7 +397,7 @@ const AuthButtons = () => {
 
         {/* Dashboard Button */}
         <button
-          onClick={() => navigate("/assessment")}
+          onClick={() => navigate("/dashboard")}
           className="text-blue-600 hover:text-blue-700 font-medium transition-colors"
         >
           Dashboard
@@ -439,4 +439,3 @@ const AuthButtons = () => {
 };
 
 export default LandingPage;
-

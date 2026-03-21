@@ -110,7 +110,7 @@ const AssessmentPage = () => {
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("Camera error:", error);
       setCameraError("Failed to access camera. Please check permissions.");
 
@@ -763,4 +763,3 @@ const AssessmentPage = () => {
 };
 
 export default AssessmentPage;
-
