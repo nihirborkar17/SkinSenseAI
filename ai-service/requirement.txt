@@ -1,0 +1,21 @@
+# ── Deep Learning ─────────────────────────────────────────────────────────────
+# Install PyTorch separately with correct CUDA version:
+# CUDA 12.4 (recommended): pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
+# CPU only:                pip install torch torchvision
+torch>=2.6.0
+torchvision>=0.21.0
+
+# ── Image processing & augmentation ───────────────────────────────────────────
+pillow>=10.0.0
+numpy>=1.26.0
+albumentations>=1.4.0
+
+# ── Data & ML utilities ────────────────────────────────────────────────────────
+pandas>=2.1.0
+scikit-learn>=1.4.0
+
+# ── FastAPI server ─────────────────────────────────────────────────────────────
+fastapi>=0.110.0
+uvicorn[standard]>=0.28.0
+python-multipart>=0.0.9
+pydantic>=2.6.0

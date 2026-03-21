@@ -2,7 +2,17 @@
 __pycache__/
 *.pyc
 venv/
-.env
+.env 
+Dataset/
+venv_linux/
+checkpoints/
+Dataset/
+mlflow/
+mlruns/
+mlflow.db
+__pycache__/
+env/
+*.pth
 
 # Dependencies
 node_modules/
@@ -12,6 +22,7 @@ dist
 dist-ssr
 *.local
 .prisma/
+package-lock.json
 
 # Build output
 dist/
