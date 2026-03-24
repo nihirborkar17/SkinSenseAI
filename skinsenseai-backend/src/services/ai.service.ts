@@ -11,7 +11,6 @@
 
 // IMPORT THIS FIRST - loads .env
 import "../config/env.config.js";
-
 import axios, { AxiosError } from "axios";
 import FormData from "form-data";
 import { AIAnalyzeResponse, AIChatResponse } from "../types/response.types.js";
@@ -39,7 +38,6 @@ class AIService {
       process.env.AI_PREDICT_URL || "http://localhost:5000/predict";
     this.chatUrl = process.env.AI_CHAT_URL || "http://localhost:5000/chat";
     this.apiKey = process.env.AI_API_KEY;
-
     // 🆕 Enable mock mode if AI_MOCK_MODE is true
     this.useMockData = process.env.AI_MOCK_MODE === "true";
 
@@ -89,7 +87,7 @@ class AIService {
 
     try {
       logger.info(
-        `Sending image to AI service for analysis (Consent: ${consentId})`,
+        `Sending image to FastAPI service for analysis (Consent: ${consentId})`,
       );
 
       /*
@@ -115,16 +113,8 @@ class AIService {
       formData.append("consentId", consentId);
       formData.append("timestamp", new Date().toISOString());
 
-      /*
-       * SEND REQUEST TO AI TEAM
-       * Using axios.post:
-       * - More Features than fetch
-       * - Better error handling
-       * - Automatic JSON parsing
-       * - Request/response interceptors
-       * - Timeout support
-       */
-      const response = await axios.post<AIAnalyzeResponse>(
+      // Call FastAPI
+      const response = await axios.post(
         this.predictUrl, // Where to send
         formData, // What to send
         {
@@ -155,19 +145,44 @@ class AIService {
         },
       );
 
+      const fastApiResponse = response.data;
+
+      // Transform FastAPI response to our AIAnalyzeResponse format
+      const transformedResponse: AIAnalyzeResponse = {
+        success: fastApiResponse.success,
+        prediction: {
+          condition: fastApiResponse.prediction.condition,
+          confidence: fastApiResponse.prediction.confidence,
+          top_predictions: fastApiResponse.prediction.top_predictions.map(
+            (pred: any) => ({
+              label: pred.condition,
+              confidence: pred.confidence,
+            }),
+          ),
+          processing_time: fastApiResponse.metadata?.processing_time || null,
+        },
+        metadata: {
+          model_version:
+            fastApiResponse.prediction.top_class || "fastapi-skinnet-v1",
+          processing_time: fastApiResponse.metadata?.processing_time || null,
+          // ← REMOVE severity fields from here
+        },
+      };
+
       /*
        * LOG SUCCESS
        * - Helps track successful requests
        * - Include processing time if AI team provides it
        */
-      logger.info("Image analysis successful", {
+      logger.info("FastAPI prediction successful", {
         consentId,
-        confidence: response.data.prediction?.confidence,
-        processingTime: response.data.metadata?.processing_time,
+        condition: transformedResponse.prediction.condition,
+        confidence: transformedResponse.prediction.confidence,
+        severity: fastApiResponse.prediction.severity_label,
       });
 
       // Return the AI response
-      return response.data;
+      return transformedResponse;
     } catch (error) {
       /*
        * ERROR HANDLING
@@ -241,10 +256,11 @@ class AIService {
           const errorMessage =
             data?.message ||
             data?.error ||
+            data?.detail ||
             (typeof data === "string" ? data : "Analysis failed");
 
           throw new AppError(`AI service error: ${errorMessage}`, status, {
-            aiResponse: data, // ✅ Fixed typo: aiReponse → aiResponse
+            aiResponse: data,
           });
         }
       }
@@ -281,51 +297,44 @@ class AIService {
     question: string,
     consentId?: string,
   ): Promise<AIChatResponse> {
-    // 🆕 MOCK MODE: Return simulated RAG response
-    if (this.useMockData) {
-      logger.info("🧪 Mock Mode Active: Returning simulated RAG response");
-      return this.getMockChatResponse(disease, question, consentId);
-    }
+    // ALWAYS use mock/demo for chat (RAG not implemented yet)
+    // This is independent of AI_MOCK_MODE setting
+    logger.info("💬 Using demo chat response (RAG not integrated yet)");
+    return this.getMockChatResponse(disease, question, consentId);
 
-    try {
-      logger.info(`Sending chat request to RAG service`, {
+    // Real RAG implementation will be added here when ready
+    // Keeping the code below commented for future reference:
+    /*
+  try {
+    logger.info(`Sending chat request to RAG service`, {
+      disease,
+      consentId,
+    });
+
+    const response = await axios.post<AIChatResponse>(
+      this.chatUrl,
+      {
         disease,
-        consentId,
-      });
-
-      /*
-       * SEND REQUEST TO RAG ENDPOINT
-       * unlike image upload, this is JSON (not formData)
-       * Request Body:
-       * {
-       *   disease: "Eczema",
-       *   question: "How do I treat this?",
-       *   consentId: "uuid" (optional)
-       * }
-       */
-      const response = await axios.post<AIChatResponse>(
-        this.chatUrl,
-        {
-          disease,
-          question,
-          ...(consentId && { consentId }),
+        question,
+        ...(consentId && { consentId }),
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          ...(this.apiKey && { "X-API-Key": this.apiKey }),
         },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            ...(this.apiKey && { "X-API-Key": this.apiKey }),
-          },
-          timeout: this.timeout,
-        },
-      );
+        timeout: this.timeout,
+      },
+    );
 
-      logger.info("RAG chat successful", {
-        disease,
-        answerLength: response.data.answer?.length,
-      });
+    logger.info("RAG chat successful", {
+      disease,
+      answerLength: response.data.answer?.length,
+    });
 
-      return response.data;
-    } catch (error) {
+    return response.data;
+  } 
+  catch (error) {
       logger.error("RAG chat failed", error);
 
       // Similar error handling as analyzeImage
@@ -363,6 +372,7 @@ class AIService {
         originalError: error instanceof Error ? error.message : "Unknown Error",
       });
     }
+    */
   }
 
   /*

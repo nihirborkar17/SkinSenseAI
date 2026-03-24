@@ -37,7 +37,94 @@ interface DiseaseMetadata {
  */
 type DiseaseDatabase = Record<string, DiseaseMetadata>;
 
-// Educational Service Class
+// Add HAM10000 disease mappings
+const HAM10000_CONDITIONS: Record<
+  string,
+  {
+    fullName: string;
+    severity: "low" | "medium" | "high";
+    chatEnabled: boolean;
+    description: string;
+  }
+> = {
+  melanoma: {
+    fullName: "Melanoma",
+    severity: "high",
+    chatEnabled: true,
+    description:
+      "Melanoma is a serious form of skin cancer that develops in melanocytes (pigment-producing cells). Early detection is critical. Characterized by asymmetric moles with irregular borders, multiple colors, and diameter larger than 6mm. Requires immediate medical evaluation and often surgical removal.",
+  },
+  "melanocytic nevus": {
+    fullName: "Melanocytic Nevus",
+    severity: "low",
+    chatEnabled: true,
+    description:
+      "A melanocytic nevus (commonly known as a mole) is a benign growth of melanocytes. Most are harmless, but monitoring for changes is important. Regular self-examination can help detect any suspicious changes that may require medical attention.",
+  },
+  "melanocytic nevi": {
+    fullName: "Melanocytic Nevus",
+    severity: "low",
+    chatEnabled: true,
+    description:
+      "A melanocytic nevus (commonly known as a mole) is a benign growth of melanocytes. Most are harmless, but monitoring for changes is important. Regular self-examination can help detect any suspicious changes that may require medical attention.",
+  },
+  "basal cell carcinoma": {
+    fullName: "Basal Cell Carcinoma",
+    severity: "medium",
+    chatEnabled: true,
+    description:
+      "Basal cell carcinoma is the most common type of skin cancer. It rarely spreads but can be locally invasive. Appears as a pearly or waxy bump, flat flesh-colored or brown scar-like lesion. Treatment is highly effective when caught early, usually involving surgical removal or topical treatments.",
+  },
+  "actinic keratosis": {
+    fullName: "Actinic Keratosis",
+    severity: "medium",
+    chatEnabled: true,
+    description:
+      "Actinic keratosis (also called solar keratosis) is a precancerous skin lesion caused by sun damage. Appears as rough, scaly patches on sun-exposed areas. While not cancer itself, it can develop into squamous cell carcinoma if left untreated. Treatment options include cryotherapy, topical medications, or photodynamic therapy.",
+  },
+  "actinic keratoses": {
+    fullName: "Actinic Keratosis",
+    severity: "medium",
+    chatEnabled: true,
+    description:
+      "Actinic keratosis (also called solar keratosis) is a precancerous skin lesion caused by sun damage. Appears as rough, scaly patches on sun-exposed areas. While not cancer itself, it can develop into squamous cell carcinoma if left untreated. Treatment options include cryotherapy, topical medications, or photodynamic therapy.",
+  },
+  "benign keratosis": {
+    fullName: "Benign Keratosis",
+    severity: "low",
+    chatEnabled: true,
+    description:
+      "Benign keratosis (seborrheic keratosis) is a non-cancerous skin growth that appears with age. Often looks like a wart or stuck-on appearance. No treatment is necessary unless for cosmetic reasons or if it becomes irritated. Common in adults over 50.",
+  },
+  "benign keratosis-like lesions": {
+    fullName: "Benign Keratosis",
+    severity: "low",
+    chatEnabled: true,
+    description:
+      "Benign keratosis (seborrheic keratosis) is a non-cancerous skin growth that appears with age. Often looks like a wart or stuck-on appearance. No treatment is necessary unless for cosmetic reasons or if it becomes irritated. Common in adults over 50.",
+  },
+  dermatofibroma: {
+    fullName: "Dermatofibroma",
+    severity: "low",
+    chatEnabled: true,
+    description:
+      "Dermatofibroma is a common benign fibrous nodule of the skin. Usually appears as a small, firm, raised bump that may be reddish-brown. Often found on the legs. Harmless and rarely requires treatment unless bothersome or for cosmetic reasons.",
+  },
+  "vascular lesion": {
+    fullName: "Vascular Lesion",
+    severity: "low",
+    chatEnabled: true,
+    description:
+      "Vascular lesions are abnormalities of blood vessels in the skin, including hemangiomas, angiomas, and telangiectasias. Most are benign. Appearance varies from red or purple spots to raised bumps. Treatment depends on type, location, and symptoms, ranging from observation to laser therapy.",
+  },
+  "vascular lesions": {
+    fullName: "Vascular Lesion",
+    severity: "low",
+    chatEnabled: true,
+    description:
+      "Vascular lesions are abnormalities of blood vessels in the skin, including hemangiomas, angiomas, and telangiectasias. Most are benign. Appearance varies from red or purple spots to raised bumps. Treatment depends on type, location, and symptoms, ranging from observation to laser therapy.",
+  },
+}; // Educational Service Class
 class EducationService {
   // Disease database loaded from JSON file
   private diseaseDatabase: DiseaseDatabase;
@@ -87,16 +174,35 @@ class EducationService {
   */
   enrichPrediction(condition: string, confidence: number): AnalysisResult {
     /* NORMALIZE CONDITION NAME 
-      - JSON keys are lowercase: 'eczema', 'psoriasis', etc
-      - Need consistent matching
-    */
-    const normalizedCondition = this.normalizeConditionName(condition);
-    const metadata = this.getDiseaseMetadata(normalizedCondition);
+    - JSON keys are lowercase: 'eczema', 'psoriasis', etc
+    - Need consistent matching
+  */
+    const normalizedCondition = condition.toLowerCase().trim();
+
+    // Check HAM10000 conditions FIRST
+    const ham10000Match = HAM10000_CONDITIONS[normalizedCondition];
+
+    let metadata;
+
+    if (ham10000Match) {
+      // ✅ USE HAM10000 METADATA
+      logger.info(`Matched HAM10000 condition: ${normalizedCondition}`);
+      metadata = {
+        condition: ham10000Match.fullName,
+        urgencyLevel: ham10000Match.severity,
+        requiresImmediateAttention: ham10000Match.severity === "high",
+        demoDescription: ham10000Match.description,
+      };
+    } else {
+      // ✅ FALLBACK to old disease metadata
+      logger.info(`Using legacy disease metadata for: ${normalizedCondition}`);
+      metadata = this.getDiseaseMetadata(normalizedCondition);
+    }
 
     /* Determines if chat should be available
-      - Disease is in our database
-      - Confidence is above threshold (AI is reasonably sure)
-    */
+    - Disease is in our database
+    - Confidence is above threshold (AI is reasonably sure)
+  */
     const chatAvailable = true;
 
     // BUILD ANALYSIS RESULT
@@ -104,15 +210,12 @@ class EducationService {
       // from AI prediction
       condition: metadata.condition,
       confidence: confidence,
-
       // Metadata
       urgency_level: metadata.urgencyLevel,
       requires_immediate_attention: metadata.requiresImmediateAttention,
       chat_available: chatAvailable,
-
       // Demo content (temporary remove after RAG integration)
       description: metadata.demoDescription,
-
       // Note for frontend
       note: chatAvailable
         ? "Chat enabled - Use /api/chat endpoint for RAG-powered Q&A"
@@ -130,9 +233,7 @@ class EducationService {
     });
 
     return result;
-  }
-
-  // Normalize condition-name - Converts AI output to our database keys
+  } // Normalize condition-name - Converts AI output to our database keys
   private normalizeConditionName(condition: string): string {
     // Step 1: Convert to lowercase
     let normalized = condition.toLowerCase();

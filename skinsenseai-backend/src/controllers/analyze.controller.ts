@@ -93,6 +93,16 @@ export const analyzeImage = async (
       consentId, // For AI team's tracking
     );
 
+    // ADD THIS DEBUG LOGGING:
+    console.log("=== RAW AI RESPONSE ===");
+    console.log("Condition:", aiResponse.prediction.condition);
+    console.log("Confidence:", aiResponse.prediction.confidence);
+    console.log(
+      "Top predictions:",
+      JSON.stringify(aiResponse.prediction.top_predictions, null, 2),
+    );
+    console.log("=======================");
+
     //Validate AI Response
     if (!aiResponse.success || !aiResponse.prediction) {
       throw new AppError("Invalid response from AI service", 500, {
