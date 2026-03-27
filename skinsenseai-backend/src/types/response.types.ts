@@ -2,8 +2,8 @@
     Response Types
 */
 
-// API Response 
-export interface ApiResponse<T = any>{
+// API Response
+export interface ApiResponse<T = any> {
   success: boolean;
   message: string;
   data?: T;
@@ -11,17 +11,17 @@ export interface ApiResponse<T = any>{
 }
 
 // Auth Response
-export interface AuthResponse{
-  user:{
-    id:string;
+export interface AuthResponse {
+  user: {
+    id: string;
     email: string;
     createdAt: Date;
   };
-  token:string;
+  token: string;
 }
 
-// User Response 
-export interface UserResponse{
+// User Response
+export interface UserResponse {
   id: string;
   email: string;
   createdAt: Date;
@@ -61,9 +61,9 @@ export interface AnalysisResult {
   // From AI prediction
   condition: string;
   confidence: number;
-  
+
   // Metadata (from our service)
-  urgency_level: 'low' | 'medium' | 'high';
+  urgency_level: "low" | "medium" | "high";
   requires_immediate_attention: boolean;
   chat_available: boolean;
 
