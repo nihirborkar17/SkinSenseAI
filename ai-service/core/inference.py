@@ -14,11 +14,11 @@ from PIL import Image
 import torch
 import torch.nn.functional as F
 
-from dataset import (
+from core.dataset import (
     get_val_transforms, get_tta_transforms,
     CLASS_NAMES, CLASS_INFO, IDX_TO_LABEL, SEVERITY_LABELS,
 )
-from model import load_model, SEVERITY_WEIGHTS
+from core.model import load_model, SEVERITY_WEIGHTS
 
 
 # ── Image preprocessing ────────────────────────────────────────────────────────

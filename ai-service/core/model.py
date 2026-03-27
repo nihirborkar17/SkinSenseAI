@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import models
-from dataset import CLASS_NAMES, CLASS_INFO, SEVERITY_LABELS, IDX_TO_LABEL
+from core.dataset import CLASS_NAMES, CLASS_INFO, SEVERITY_LABELS, IDX_TO_LABEL
 
 
 # ── Severity weights per class (0–4 scale) ────────────────────────────────────

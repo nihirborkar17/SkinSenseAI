@@ -7,6 +7,7 @@ Dataset/
 venv_linux/
 checkpoints/
 Dataset/
+Data/
 mlflow/
 mlruns/
 mlflow.db

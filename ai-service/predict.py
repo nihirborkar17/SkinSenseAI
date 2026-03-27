@@ -15,8 +15,8 @@ from pathlib import Path
 import torch
 from PIL import Image
 
-from inference import SkinAnalyzer
-from dataset import CLASS_INFO, SEVERITY_LABELS
+from core.inference import SkinAnalyzer
+from core.dataset import CLASS_INFO, SEVERITY_LABELS
 
 
 def predict(image_path: str, checkpoint: str, use_tta: bool, device: str):
