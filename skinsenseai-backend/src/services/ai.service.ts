@@ -297,44 +297,39 @@ class AIService {
     question: string,
     consentId?: string,
   ): Promise<AIChatResponse> {
-    // ALWAYS use mock/demo for chat (RAG not implemented yet)
-    // This is independent of AI_MOCK_MODE setting
-    logger.info("💬 Using demo chat response (RAG not integrated yet)");
-    return this.getMockChatResponse(disease, question, consentId);
-
     // Real RAG implementation will be added here when ready
     // Keeping the code below commented for future reference:
-    /*
-  try {
-    logger.info(`Sending chat request to RAG service`, {
-      disease,
-      consentId,
-    });
-
-    const response = await axios.post<AIChatResponse>(
-      this.chatUrl,
-      {
+    try {
+      logger.info(`Sending chat request to RAG service`, {
         disease,
-        question,
-        ...(consentId && { consentId }),
-      },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          ...(this.apiKey && { "X-API-Key": this.apiKey }),
+        consentId,
+      });
+
+      const response = await axios.post<AIChatResponse>(
+        this.chatUrl,
+        {
+          disease,
+          question,
+          assessmentId: consentId,
+          ...(consentId && { consentId }),
         },
-        timeout: this.timeout,
-      },
-    );
+        {
+          headers: {
+            "Content-Type": "application/json",
+            ...(this.apiKey && { "X-API-Key": this.apiKey }),
+          },
+          timeout: this.timeout,
+        },
+      );
 
-    logger.info("RAG chat successful", {
-      disease,
-      answerLength: response.data.answer?.length,
-    });
+      logger.info("RAG chat successful", {
+        disease,
+        answerLength: response.data.answer?.length,
+        sources: response.data.sources?.length,
+      });
 
-    return response.data;
-  } 
-  catch (error) {
+      return response.data;
+    } catch (error) {
       logger.error("RAG chat failed", error);
 
       // Similar error handling as analyzeImage
@@ -372,7 +367,6 @@ class AIService {
         originalError: error instanceof Error ? error.message : "Unknown Error",
       });
     }
-    */
   }
 
   /*
