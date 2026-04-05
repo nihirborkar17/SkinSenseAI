@@ -27,7 +27,7 @@ class AIService {
   private readonly predictUrl: string;
   private readonly chatUrl: string;
   private readonly apiKey: string | undefined;
-  private readonly timeout: number = 30000; // 30 Second default timeout
+  private readonly timeout: number = 80000; // 80 Second default timeout
   private readonly useMockData: boolean; // 🆕 Mock mode flag
 
   // Constructor
@@ -297,8 +297,7 @@ class AIService {
     question: string,
     consentId?: string,
   ): Promise<AIChatResponse> {
-    // Real RAG implementation will be added here when ready
-    // Keeping the code below commented for future reference:
+    // Real RAG implementation will be added here
     try {
       logger.info(`Sending chat request to RAG service`, {
         disease,
@@ -310,8 +309,8 @@ class AIService {
         {
           disease,
           question,
-          assessmentId: consentId,
-          ...(consentId && { consentId }),
+          assessmentId: consentId || "temp-session",
+          consentId: consentId || "temp-consent",
         },
         {
           headers: {

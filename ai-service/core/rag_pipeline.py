@@ -70,6 +70,7 @@ SUGGESTED_QUESTIONS = {
         "Are vascular lesions dangerous?",
         "What causes vascular skin lesions?",
         "What treatments are available for vascular lesions?",
+
     ],
 }
 
@@ -109,7 +110,9 @@ class ChatSession:
             )})
 
         for msg in self.history:
-            messages.append(msg)
+            if isinstance(msg, dict) and "role" in msg and "content" in msg:
+                if msg["content"].strip():
+                    messages.append(msg)
 
         messages.append({"role": "user", "content": (
             f"[Retrieved context]\n{context_block}\n\n"
@@ -181,29 +184,47 @@ class OllamaBackend:
     def complete(self, messages: list, max_tokens: int = 800, stream: bool = False):
         import ollama
 
-        if stream:
-            return self._stream(messages)
+        clean_messages = []
+        for msg in messages:
+            if isinstance(msg, dict) and "role" in msg and "content" in msg:
+                # Only add if content si not empty
+                if msg["content"].strip():
+                    clean_messages.append({
+                            "role": msg["role"],
+                            "content": msg["content"]
+                        })
 
-        response = ollama.chat(
-            model=self.model,
-            messages=messages
-        )
+        if not clean_messages:
+            raise ValueError("No valid messages to send")
 
-        return response["message"]["content"]
+        if stream: 
+            return self._stream(clean_messages)
+
+        try: 
+            response = ollama.chat(
+                    model=self.model,
+                    messages=clean_messages
+                    )
+
+            return response["message"]["content"]
+        except Exception as e:
+            raise RuntimeError(f"Ollama chat failed: {e}")
 
     def _stream(self, messages):
         import ollama
 
-        stream = ollama.chat(
-            model=self.model,
-            messages=messages,
-            stream=True
-        )
+        try: 
+            stream = ollama.chat(
+                    model=self.model,
+                    messages=messages,
+                    stream=True
+                    )
 
-        for chunk in stream:
-            if "message" in chunk:
-                yield chunk["message"]["content"]
-
+            for chunk in stream:
+                if "message" in chunk and "content" in chunk["message"]:
+                    yield chunk["message"]["content"]
+        except Exception as e:
+            raise RuntimeError(f"Ollama stream failed: {e}")
 
 
 def build_llm_backend(provider: str, model: str = None):

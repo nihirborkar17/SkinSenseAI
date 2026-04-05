@@ -97,99 +97,37 @@ export const chatWithRAG = async (
       condition: assessment.condition,
     });
 
-    // Check if chat is enabled for this disease
-    const chatEnabled = educationService.isChatEnabled(disease);
+    const chatResponse = await aiService.chatWithRAG(
+      disease,
+      question,
+      consentId,
+    );
 
-    if (!chatEnabled) {
-      throw new AppError(
-        "Chat is not available for this condition. Please consult a healthcare professional!",
-        403,
-        { disease, reason: "Chat disabled for this condition" },
-      );
-    }
-
-    // Call RAG Service
-    // TODO: Must replace with RAG API call when AI team is ready
-    // For now, Using Demo response for testing
-    // Later, we will call the aiService.chatWithRAG() call
-    logger.info("Generating demo RAG Response...");
-
-    const demoAnswer = educationService.getDemoRAGResponse(disease, question);
-
-    // save chat to db
     const savedChat = await prisma.chatHistory.create({
       data: {
         assessmentId: assessmentId,
-        question: question.trim(),
-        answer: demoAnswer,
+        question: question,
+        answer: chatResponse.answer,
       },
     });
 
-    //Prepare Response
-    const chatResponse = {
-      chatId: savedChat.id,
-      assessmentId: assessmentId,
-      question: question,
-      answer: demoAnswer,
-      disease: disease,
-      source: [],
-      isDemoResponse: true,
-      note: "This is demo response. Real RAG integration is in process.",
-      savedAt: savedChat.timestamp,
-    };
-
-    // // RAG API
-    // logger.info('Forwarding to RAG service...');
-
-    // const ragResponse = await aiService.chatWithRAG(
-    //     disease,
-    //     question,
-    //     consentId
-    // );
-    // if(!ragResponse.success || !.ragResponse.answer) {
-    //     throw new AppError(
-    //         'Invalid response from RAG server',
-    //         500,
-    //         { ragResponse }
-    //     );
-    // }
-    //
-    // save real Rag response to db
-    //
-    // const savedChat = await primsa.chatHistory.create({
-    //  data: {
-    // 		assessmentId: assessmentId,
-    // 		question: question.trim(),
-    // 		answer: ragResponse.answer,
-    // 		},
-    // 	})
-
-    // const chatResponse = {
-    //     chatId: savedChat.id,
-    //     assessmentId: assessmentId,
-    //     question: question,
-    //     answer: ragResponse.answer,
-    //     disease: disease,
-    //     source: ragResponse.sources || [],
-    //     context: ragResponse.context,
-    //     isDemoResponse: false,
-    //     savedAt: savedChat.timestamp,
-    // };
-
-    // Step 4: Log success
-    logger.info("Chat response generated", {
+    logger.info("Chat saved successfully", {
       chatId: savedChat.id,
       assessmentId,
-      userId,
-      disease,
-      answerLength: chatResponse.answer.length,
-      isDemoResponse: chatResponse.isDemoResponse,
     });
 
     // Step 5: Send Response
-    res
-      .status(200)
-      .json(successResponse(chatResponse, "Answer generated successfully"));
+    res.status(200).json({
+      success: true,
+      data: {
+        chatId: savedChat.id,
+        question: question,
+        answer: chatResponse.answer,
+        sources: chatResponse.sources || [],
+        savedAt: savedChat.timestamp,
+        isDemoResponse: false,
+      },
+    });
   } catch (error) {
     // ERROR HANDLING
     logger.error("Chat request failed", error);

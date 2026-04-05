@@ -86,26 +86,25 @@ async def chat_with_rag(request: ChatRequest):
         rag = get_rag()
         
         # Create or restore session
-        # For now, create new session each time
-        # TODO: Implement session persistence
         session = rag.create_session(
             condition_code=condition_code,
-            confidence=85.0,  # Default, should come from assessment
+            confidence=50.0,  # Default, should come from assessment
             severity_label="Medium"  # Default, should come from assessment
         )
-        
-        # Restore history if provided
-        if request.session_history:
-            session.history = request.session_history
-        
         # Get answer from RAG
-        answer = rag.chat(
+        try:
+            answer = rag.chat(
             session=session,
             user_query=request.question,
             stream=False,
             max_tokens=800
-        )
-        
+            )
+        except Exception as e:
+            raise HTTPException(
+                    status_code=500,
+                    detail=f"RAG generation failed: {str(e)}"
+                    )
+       
         # Get suggested questions
         suggested = rag.get_suggested_questions(condition_code)
         
@@ -117,17 +116,21 @@ async def chat_with_rag(request: ChatRequest):
         return ChatResponse(
             success=True,
             answer=answer,
-            sources=sources,
+            sources=sources if sources else ["Medical knowledge base"],
             suggested_questions=suggested[:3],
             context=f"Based on {len(chunks)} reference documents"
         )
+    except HTTPException:
+        raise
         
     except Exception as e:
+        import traceback
+        print(f"Chat error: {traceback.format_exc()}")
         raise HTTPException(
-            status_code=500,
-            detail=f"Chat failed: {str(e)}"
-        )
-
+                status_code=500,
+                detail=f"Chat failed: {str(e)}"
+                )
+       
 @router.get("/chat/suggestions/{condition_code}")
 async def get_suggestions(condition_code: str):
     """Get suggested questions for a condition"""
